@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realm of Aetheria | Beta 0.0.2.8</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+        }
+        canvas#starsCanvas {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none; z-index: 0;
+        }
+        #gameWrapper {
+            position: relative; z-index: 1;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        #gameCanvas {
+            border: 3px solid #ff6b00; border-radius: 4px;
+            image-rendering: pixelated; image-rendering: crisp-edges;
+            box-shadow: 0 0 30px rgba(255,107,0,0.3), 0 0 60px rgba(255,107,0,0.1);
+            cursor: none;
+        }
+        .game-header {
+            display: flex; align-items: center; justify-content: space-between;
+            width: 960px; margin-bottom: 8px; padding: 0 4px;
+        }
+        .game-title { color: #ff6b00; font-size: 10px; text-shadow: 0 0 10px rgba(255,107,0,0.5); }
+        .beta-tag {
+            color: #ffcc00; font-size: 7px;
+            background: rgba(255,204,0,0.1); padding: 3px 8px;
+            border: 1px solid rgba(255,204,0,0.3); border-radius: 3px;
+            animation: blink 2s ease-in-out infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+        .game-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            width: 960px; margin-top: 8px; padding: 0 4px;
+        }
+        .controls-hint { color: #666; font-size: 6px; line-height: 1.8; }
+        .mimo-branding { color: #ff6b00; font-size: 6px; text-align: right; line-height: 1.8; opacity: 0.7; }
+        .mimo-branding a { color: #ff8c3a; text-decoration: none; }
+        .mimo-branding a:hover { text-decoration: underline; }
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.85);
+            z-index: 100; justify-content: center; align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #1a1a2e; border: 2px solid #ff6b00; border-radius: 8px;
+            padding: 24px; max-width: 480px; width: 90%;
+            box-shadow: 0 0 40px rgba(255,107,0,0.3);
+        }
+        .modal h2 { color: #ff6b00; font-size: 12px; margin-bottom: 16px; font-family: 'Press Start 2P', monospace; }
+        .modal p { color: #aaa; font-size: 8px; line-height: 2; margin-bottom: 12px; font-family: 'Press Start 2P', monospace; }
+        .modal input {
+            width: 100%; padding: 10px; background: #0a0a1a;
+            border: 1px solid #333; color: #fff;
+            font-family: 'Press Start 2P', monospace; font-size: 8px;
+            border-radius: 4px; margin-bottom: 12px;
+        }
+        .modal input:focus { outline: none; border-color: #ff6b00; }
+        .modal-buttons { display: flex; gap: 8px; justify-content: flex-end; }
+        .modal-btn {
+            padding: 8px 16px; font-family: 'Press Start 2P', monospace;
+            font-size: 8px; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s;
+        }
+        .modal-btn.primary { background: #ff6b00; color: #fff; }
+        .modal-btn.secondary { background: transparent; color: #888; border: 1px solid #444; }
+        .modal-btn:hover { transform: scale(1.05); filter: brightness(1.2); }
+        #loadingScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0a0a1a; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 200; transition: opacity 0.5s;
+        }
+        #loadingScreen.hidden { opacity: 0; pointer-events: none; }
+        .loading-logo { color: #ff6b00; font-size: 16px; font-family: 'Press Start 2P', monospace; margin-bottom: 8px; text-shadow: 0 0 20px rgba(255,107,0,0.5); }
+        .loading-sub { color: #888; font-size: 7px; font-family: 'Press Start 2P', monospace; margin-bottom: 20px; }
+        .loading-bar-container { width: 300px; height: 8px; background: #1a1a2e; border: 1px solid #ff6b00; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+        .loading-bar { height: 100%; background: linear-gradient(90deg, #ff6b00, #ffcc00); width: 0%; transition: width 0.3s; }
+        .loading-text { color: #666; font-size: 7px; font-family: 'Press Start 2P', monospace; }
+    </style>
+</head>
+<body>
+    <canvas id="starsCanvas"></canvas>
+    <div id="loadingScreen">
+        <div class="loading-logo">Realm of Aetheria</div>
+        <div class="loading-sub">A Pixel RPG Adventure</div>
+        <div class="loading-bar-container"><div class="loading-bar" id="loadingBar"></div></div>
+        <div class="loading-text" id="loadingText">Initializing...</div>
+    </div>
+    <div class="modal-overlay" id="apiKeyModal">
+        <div class="modal">
+            <h2>MiMo AI Integration</h2>
+            <p>Enter your Xiaomi MiMo API key to enable AI-powered NPC dialogs, dynamic quests, and smart battle commentary.</p>
+            <p style="color:#ffcc00;">Optional — the game works fully without it!</p>
+            <input type="password" id="apiKeyInput" placeholder="Enter MiMo API Key...">
+            <p style="font-size:6px;">Get free tokens at <a href="https://100t.xiaomimimo.com/" target="_blank" style="color:#ff8c3a;">100t.xiaomimimo.com</a> | API: platform.xiaomimimo.com</p>
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" onclick="closeApiModal(false)">Skip</button>
+                <button class="modal-btn primary" onclick="closeApiModal(true)">Connect</button>
+            </div>
+        </div>
+    </div>
+    <div id="gameWrapper" style="display:none;">
+        <div class="game-header">
+            <div class="game-title">Realm of Aetheria</div>
+            <div class="beta-tag">Beta 0.0.2.8 — Still Under Development</div>
+        </div>
+        <canvas id="gameCanvas" width="960" height="672"></canvas>
+        <div class="game-footer">
+            <div class="controls-hint">
+                WASD/Arrows: Move | E: Interact/Confirm | I: Inventory | B: Shop<br>
+                ESC: Menu | P: MiMo API Settings | 1-4: Battle Actions
+            </div>
+            <div class="mimo-branding">
+                AI powered by Xiaomi MiMo<br>
+                <a href="https://100t.xiaomimimo.com/" target="_blank">100t.xiaomimimo.com</a>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
